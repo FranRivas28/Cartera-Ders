@@ -19,11 +19,16 @@ function valido(d) {
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
-  if (!process.env.GITHUB_TOKEN) return res.status(501).json({ error: "Falta GITHUB_TOKEN en Vercel" });
+  if (!process.env.GITHUB_TOKEN) return res.status(501).json({ error: "Vercel no ve la variable GITHUB_TOKEN en este deploy. Revisá que esté marcada para Production y hacé Redeploy." });
 
   if (req.method === "GET") {
     const r = await gh(`${API}?ref=${RAMA}`);
-    if (r.status === 404) return res.status(200).json({ datos: { version: 1, movs: [], manual: {} }, sha: null, clave: !!process.env.CLAVE });
+    if (r.status === 401) return res.status(502).json({ error: "GitHub no acepta el token (GITHUB_TOKEN): puede estar mal copiado o vencido." });
+    if (r.status === 404) {
+      const repo = await gh(`https://api.github.com/repos/${REPO}`);
+      if (!repo.ok) return res.status(502).json({ error: `El token no tiene acceso al repo ${REPO}. Al crearlo, elegí ese repo en "Repository access".` });
+      return res.status(200).json({ datos: { version: 1, movs: [], manual: {} }, sha: null, clave: !!process.env.CLAVE });
+    }
     if (!r.ok) return res.status(502).json({ error: `GitHub respondió ${r.status}` });
     const j = await r.json();
     const datos = JSON.parse(Buffer.from(j.content, "base64").toString("utf8"));
@@ -42,6 +47,7 @@ export default async function handler(req, res) {
       content: contenido, branch: RAMA, ...(body.sha ? { sha: body.sha } : {}),
     }) });
     if (r.status === 409 || r.status === 422) return res.status(409).json({ error: "Alguien guardó antes. Recargá y volvé a intentar." });
+    if (r.status === 403 || r.status === 404) return res.status(502).json({ error: "El token puede leer pero no escribir: dale permiso Contents: Read and write." });
     if (!r.ok) return res.status(502).json({ error: `GitHub respondió ${r.status}` });
     const j = await r.json();
     return res.status(200).json({ sha: j.content.sha });
