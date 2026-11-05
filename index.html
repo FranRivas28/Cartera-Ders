@@ -73,6 +73,7 @@ th.r, td.r { text-align: right; }
 .vacio { text-align: center; padding: 28px 12px; color: var(--muted); }
 .fila { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 textarea { font: 0.8rem var(--mono); width: 100%; min-height: 6rem; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+#f-activo { text-transform: uppercase; }
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -84,15 +85,12 @@ textarea { font: 0.8rem var(--mono); width: 100%; min-height: 6rem; color: var(-
       <p class="muted estado"><i class="dot" id="dot"></i><span id="estado">Buscando precios…</span></p>
     </div>
     <div class="fila">
-      <button id="refrescar" type="button">Actualizar precios</button>
+      <button id="refrescar" type="button">Actualizar</button>
       <button class="prim" id="ir-cargar" type="button">Cargar movimiento</button>
     </div>
   </header>
 
-  <div class="aviso" id="aviso-link" hidden>
-    <p>Este link trae una cartera. ¿La cargo en este dispositivo? Reemplaza lo que haya guardado acá.</p>
-    <div class="fila" style="margin-top:8px"><button class="prim" id="link-si" type="button">Cargar cartera</button><button id="link-no" type="button">No, dejar la mía</button></div>
-  </div>
+  <p class="aviso mal" id="aviso-local" hidden>Los movimientos no se están guardando en el repo: falta poner GITHUB_TOKEN en Vercel. Mientras tanto quedan solo en este navegador.</p>
 
   <section class="tiles" aria-label="Resumen">
     <div class="tile"><span class="muted">Vale hoy</span><span class="big" id="t-valor">—</span><span class="muted" id="t-valor-nota">&nbsp;</span></div>
@@ -119,15 +117,17 @@ textarea { font: 0.8rem var(--mono); width: 100%; min-height: 6rem; color: var(-
     <form class="mov" id="form" autocomplete="off">
       <label>Fecha<input type="date" id="f-fecha" required></label>
       <label>Operación<select id="f-tipo"><option value="compra">Compra</option><option value="venta">Venta</option></select></label>
-      <label>Activo<input id="f-activo" list="activos" placeholder="SPY, GOOGL, FCI…" required></label>
+      <label>Ticker<input id="f-activo" list="activos" placeholder="Escribí SPY, GGAL, YPFD…" required autocapitalize="characters" spellcheck="false"></label>
       <label>Tipo de activo<select id="f-clase"><option value="mercado">CEDEAR o acción (precio en vivo)</option><option value="manual">Fondo u otro (valor a mano)</option></select></label>
       <label id="l-cant">Cantidad<input type="number" id="f-cant" min="0" step="any" inputmode="decimal" placeholder="25"></label>
       <label>Monto total en $<input type="number" id="f-monto" min="0" step="any" inputmode="decimal" placeholder="Con comisiones" required></label>
-      <button class="prim" type="submit">Guardar</button>
+      <label id="l-clave" hidden>Clave para guardar<input type="password" id="f-clave" autocomplete="current-password"></label>
+      <button class="prim" type="submit" id="f-guardar">Guardar</button>
     </form>
     <datalist id="activos"></datalist>
+    <p class="muted" id="f-info">Están todos los CEDEARs de BYMA y las acciones del Merval: escribí el ticker y lo busco solo.</p>
     <p class="aviso" id="f-msg" hidden></p>
-    <p class="muted">El monto es lo que muestra la app del broker en la orden (incluye comisiones). Para un fondo, "Compra" es suscripción y "Venta" es rescate; el valor de hoy se carga en su tarjeta.</p>
+    <p class="muted">El monto es lo que muestra la app del broker en la orden (incluye comisiones). Para un fondo, "Compra" es suscripción y "Venta" es rescate; el valor de hoy se carga en su tarjeta. Cada movimiento se guarda en el repo de GitHub, así que lo ven todos los que abren esta página.</p>
   </section>
 
   <section class="panel">
@@ -148,10 +148,9 @@ textarea { font: 0.8rem var(--mono); width: 100%; min-height: 6rem; color: var(-
   </section>
 
   <section class="panel">
-    <h2>Guardar y compartir</h2>
-    <p class="muted">Los movimientos se guardan en este navegador, no en un servidor: nadie más los ve. Para pasarlos a otro dispositivo o mandárselos a alguien, copiá el link o el respaldo.</p>
+    <h2>Respaldo</h2>
+    <p class="muted" id="g-donde">Los movimientos se guardan en el archivo data/cartera.json del repo. Cada cambio queda registrado en el historial de GitHub, así que se puede volver atrás.</p>
     <div class="fila">
-      <button id="copiar-link" type="button">Copiar link con la cartera</button>
       <button id="copiar-resp" type="button">Copiar respaldo</button>
       <button id="ver-importar" type="button">Pegar respaldo</button>
     </div>
@@ -178,11 +177,62 @@ textarea { font: 0.8rem var(--mono); width: 100%; min-height: 6rem; color: var(-
   const fecha = (s) => s ? `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : "";
   const signo = (el, x) => { el.classList.remove("up", "down"); if (x > 0.5) el.classList.add("up"); else if (x < -0.5) el.classList.add("down"); };
 
-  // ---------- datos guardados ----------
+  // ---------- datos guardados (en el repo vía /api/movimientos; si no está conectado, en el navegador) ----------
   const vacio = () => ({ version: 1, movs: [], manual: {} });
-  let datos = vacio();
-  const leer = () => { try { const t = localStorage.getItem(CLAVE); if (t) datos = normalizar(JSON.parse(t)); } catch (e) { /* sin almacenamiento */ } };
-  const guardar = () => { try { localStorage.setItem(CLAVE, JSON.stringify(datos)); } catch (e) { msg("g-msg", "Este navegador no deja guardar. Copiá el respaldo antes de cerrar.", true); } };
+  let datos = vacio(), sha = null, modo = "local", pideClave = false;
+  const local = {
+    leer: () => { try { const t = localStorage.getItem(CLAVE); return t ? normalizar(JSON.parse(t)) : null; } catch (e) { return null; } },
+    escribir: () => { try { localStorage.setItem(CLAVE, JSON.stringify(datos)); } catch (e) { /* sin almacenamiento */ } },
+  };
+  const clave = { leer: () => { try { return localStorage.getItem(CLAVE + "-clave") || ""; } catch (e) { return ""; } },
+    poner: (c) => { try { localStorage.setItem(CLAVE + "-clave", c); } catch (e) { /* nada */ } } };
+  async function cargarDatos() {
+    try {
+      const r = await fetch("/api/movimientos", { cache: "no-store" });
+      if (r.ok) {
+        const j = await r.json();
+        datos = normalizar(j.datos); sha = j.sha; modo = "repo"; pideClave = !!j.clave;
+        $("l-clave").hidden = !pideClave || !!clave.leer();
+        local.escribir();
+        $("aviso-local").hidden = true;
+        return;
+      }
+    } catch (e) { /* sin servidor */ }
+    modo = "local";
+    datos = local.leer() || vacio();
+    $("aviso-local").hidden = false;
+    $("g-donde").textContent = "Por ahora los movimientos se guardan solo en este navegador. Copiá el respaldo para no perderlos.";
+  }
+  // Guarda el estado nuevo. Si falla, vuelve al anterior y devuelve el motivo.
+  async function guardar(nuevo, mensaje) {
+    const antes = datos;
+    datos = nuevo;
+    if (modo !== "repo") { local.escribir(); return null; }
+    if ($("f-clave").value) clave.poner($("f-clave").value);
+    try {
+      const r = await fetch("/api/movimientos", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ datos: nuevo, sha, clave: clave.leer(), mensaje }) });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) { sha = j.sha; local.escribir(); return null; }
+      datos = antes;
+      if (r.status === 401) { clave.poner(""); $("l-clave").hidden = false; return "La clave no es correcta. Escribila y volvé a guardar."; }
+      if (r.status === 409) { await cargarDatos(); return "Alguien guardó un cambio al mismo tiempo. Ya traje lo último: volvé a cargar el movimiento."; }
+      return j.error || "No se pudo guardar. Probá de nuevo en un rato.";
+    } catch (e) { datos = antes; return "Sin conexión: no se guardó. Probá de nuevo."; }
+  }
+  const copia = () => JSON.parse(JSON.stringify(datos));
+
+  // ---------- lista de CEDEARs y acciones ----------
+  let catalogo = new Map();
+  async function cargarCatalogo() {
+    try {
+      const r = await fetch("/data/activos.json");
+      const lista = await r.json();
+      catalogo = new Map(lista.map((a) => [a.t, a]));
+      $("activos").replaceChildren(...lista.map((a) => { const o = document.createElement("option"); o.value = a.t; o.label = `${a.n} · ${a.c}${a.r ? " " + a.r : ""}`; return o; }));
+    } catch (e) { /* sin lista: igual se busca el precio */ }
+  }
+  const nombre = (t) => catalogo.get(t)?.n || "";
   function normalizar(d) {
     if (!d || !Array.isArray(d.movs)) throw new Error("formato");
     return {
@@ -195,8 +245,6 @@ textarea { font: 0.8rem var(--mono); width: 100%; min-height: 6rem; color: var(-
       manual: Object.fromEntries(Object.entries(d.manual || {}).map(([k, v]) => [String(k).toUpperCase(), { valor: Number(v.valor) || 0, fecha: String(v.fecha || "") }])),
     };
   }
-  const b64 = { a: (s) => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""),
-    de: (s) => decodeURIComponent(escape(atob(s.replace(/-/g, "+").replace(/_/g, "/")))) };
 
   // ---------- cálculo de la cartera (costo promedio) ----------
   function calcular() {
@@ -329,6 +377,7 @@ textarea { font: 0.8rem var(--mono); width: 100%; min-height: 6rem; color: var(-
       const c = document.createElement("article"); c.className = "card";
       const cab = document.createElement("div"); cab.className = "cab";
       const tk = document.createElement("span"); tk.className = "tk"; tk.textContent = f.activo;
+      if (nombre(f.activo)) { tk.title = nombre(f.activo); const nm = document.createElement("span"); nm.className = "muted"; nm.style.fontFamily = "var(--sans)"; nm.style.fontWeight = "400"; const nn = nombre(f.activo); nm.textContent = " " + (nn.length > 18 ? nn.slice(0, 17) + "…" : nn); tk.appendChild(nm); }
       const der = document.createElement("span"); der.className = "num";
       if (f.clase === "manual") { der.className = "muted"; der.textContent = datos.manual[f.activo]?.fecha ? `Valor del ${fecha(datos.manual[f.activo].fecha)}` : "Cargá el valor de hoy"; }
       else if (f.precio) { der.textContent = `${$u(f.precio)} `; const d = document.createElement("span"); const dp = f.ant ? ((f.precio / f.ant) - 1) * 100 : NaN; d.textContent = $p(dp); d.className = dp > 0 ? "up" : dp < 0 ? "down" : ""; der.appendChild(d); }
@@ -341,7 +390,15 @@ textarea { font: 0.8rem var(--mono); width: 100%; min-height: 6rem; color: var(-
         const inp = document.createElement("input"); inp.type = "number"; inp.step = "any"; inp.min = "0"; inp.inputMode = "decimal"; inp.placeholder = "Valor de hoy"; inp.id = "manual-" + f.activo; inp.setAttribute("aria-label", `Valor de hoy de ${f.activo}`);
         const bt = document.createElement("button"); bt.type = "submit"; bt.textContent = "Actualizar valor";
         fm.append(inp, bt);
-        fm.addEventListener("submit", (e) => { e.preventDefault(); const x = Number(inp.value); if (!(x >= 0) || inp.value === "") return; datos.manual[f.activo] = { valor: x, fecha: hoyISO() }; guardar(); dibujar(); });
+        fm.addEventListener("submit", async (e) => {
+          e.preventDefault(); const x = Number(inp.value); if (!(x >= 0) || inp.value === "") return;
+          bt.disabled = true;
+          const n = copia(); n.manual[f.activo] = { valor: x, fecha: hoyISO() };
+          const err = await guardar(n, `valor de ${f.activo}`);
+          bt.disabled = false;
+          if (err) msg("f-msg", err, true);
+          dibujar();
+        });
         c.appendChild(fm);
       } else {
         const prom = f.cantidad ? f.costo / f.cantidad : NaN;
@@ -375,16 +432,20 @@ textarea { font: 0.8rem var(--mono); width: 100%; min-height: 6rem; color: var(-
         .forEach(([t, k]) => { const td = document.createElement("td"); td.textContent = t; if (k) td.className = k; tr.appendChild(td); });
       const td = document.createElement("td"); td.className = "r";
       const b = document.createElement("button"); b.className = "link"; b.type = "button"; b.textContent = "Borrar";
-      b.addEventListener("click", () => {
-        if (b.dataset.seguro) { datos.movs = datos.movs.filter((x) => x.id !== m.id); guardar(); dibujar(); traerPrecios(); }
+      b.addEventListener("click", async () => {
+        if (b.dataset.seguro) {
+          b.disabled = true;
+          const n = copia(); n.movs = n.movs.filter((x) => x.id !== m.id);
+          const err = await guardar(n, `borra ${m.tipo} de ${m.activo} del ${fecha(m.fecha)}`);
+          if (err) msg("f-msg", err, true);
+          dibujar(); traerPrecios();
+        }
         else { b.dataset.seguro = "1"; b.textContent = "¿Seguro?"; b.classList.add("down"); setTimeout(() => { if (b.isConnected) { delete b.dataset.seguro; b.textContent = "Borrar"; b.classList.remove("down"); } }, 3000); }
       });
       td.appendChild(b); tr.appendChild(td);
       return tr;
     }) : [(() => { const tr = document.createElement("tr"); const td = document.createElement("td"); td.colSpan = 7; td.className = "vacio"; td.textContent = "Sin movimientos todavía."; tr.appendChild(td); return tr; })()]));
 
-    const conocidos = [...new Set(datos.movs.map((m) => m.activo))];
-    $("activos").replaceChildren(...conocidos.map((a) => { const o = document.createElement("option"); o.value = a; return o; }));
   }
 
   // ---------- formulario ----------
@@ -392,50 +453,92 @@ textarea { font: 0.8rem var(--mono); width: 100%; min-height: 6rem; color: var(-
   function msg(id, texto, mal) { const e = $(id); e.textContent = texto; e.hidden = !texto; e.classList.toggle("mal", !!mal); if (texto && !mal) setTimeout(() => { if (e.textContent === texto) e.hidden = true; }, 4000); }
   $("f-fecha").value = hoyISO();
   const claseDe = (a) => datos.movs.find((m) => m.activo === a)?.clase;
-  $("f-activo").addEventListener("change", () => { const c = claseDe($("f-activo").value.toUpperCase().trim()); if (c) { $("f-clase").value = c; ajustarClase(); } });
   const ajustarClase = () => { const man = $("f-clase").value === "manual"; $("l-cant").hidden = man; $("f-cant").required = !man; };
   $("f-clase").addEventListener("change", ajustarClase); ajustarClase();
-  $("form").addEventListener("submit", (e) => {
+
+  // Búsqueda del ticker: primero en la lista; después se confirma el precio en vivo.
+  let busqueda = { t: "", ok: false };
+  const limpiarTk = () => $("f-activo").value.toUpperCase().trim().replace(/\s+/g, "");
+  async function buscarTicker() {
+    const t = limpiarTk();
+    const info = $("f-info");
+    if (!t) { info.textContent = "Escribí el ticker y lo busco solo."; return; }
+    const ya = claseDe(t), cat = catalogo.get(t);
+    if (ya) { $("f-clase").value = ya; ajustarClase(); }
+    else if (cat) { $("f-clase").value = "mercado"; ajustarClase(); }
+    if ($("f-clase").value === "manual") { busqueda = { t, ok: true }; info.textContent = `${t}: fondo u otro activo, el valor se carga a mano.`; return; }
+    info.textContent = cat ? `${cat.n} · ${cat.c}${cat.r ? " " + cat.r : ""} · buscando precio…` : `Buscando ${t}…`;
+    busqueda = { t, ok: !!cat };
+    try {
+      const r = await fetch(`/api/cotizacion?t=${encodeURIComponent(t)}`);
+      const j = await r.json();
+      if (limpiarTk() !== t) return;
+      const q = j[t];
+      if (q && q.precio) {
+        precios[t] = q; busqueda = { t, ok: true };
+        info.textContent = `${cat ? cat.n + " · " + cat.c + (cat.r ? " " + cat.r : "") : t} · precio ${$u(q.precio)}`;
+      } else if (cat) {
+        info.textContent = `${cat.n} · ${cat.c}${cat.r ? " " + cat.r : ""} · hoy no encontré su precio, se puede cargar igual.`;
+      } else {
+        busqueda = { t, ok: false };
+        info.textContent = `No encontré ${t} entre los CEDEARs ni en el Merval. Revisá cómo lo escribe el broker, o elegí "Fondo u otro".`;
+      }
+    } catch (e) {
+      if (cat) info.textContent = `${cat.n} · ${cat.c}${cat.r ? " " + cat.r : ""}`;
+    }
+  }
+  let espera;
+  $("f-activo").addEventListener("input", () => { clearTimeout(espera); espera = setTimeout(buscarTicker, 450); });
+  $("f-activo").addEventListener("change", buscarTicker);
+  $("f-clase").addEventListener("change", buscarTicker);
+
+  $("form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const activo = $("f-activo").value.toUpperCase().trim().replace(/\s+/g, "");
+    const activo = limpiarTk();
     const clase = $("f-clase").value, tipo = $("f-tipo").value;
     const cantidad = clase === "manual" ? 0 : Number($("f-cant").value), monto = Number($("f-monto").value);
-    if (!/^[A-Z0-9.\-]{1,15}$/.test(activo)) return msg("f-msg", "Escribí el activo como aparece en el broker, por ejemplo SPY o GOOGL.", true);
+    if (!/^[A-Z0-9.\-]{1,15}$/.test(activo)) return msg("f-msg", "Escribí el ticker como aparece en el broker, por ejemplo SPY o GGAL.", true);
+    if (clase !== "manual" && !catalogo.has(activo) && !claseDe(activo) && !(busqueda.t === activo && busqueda.ok))
+      return msg("f-msg", `No encontré ${activo}. Revisá el ticker, o elegí "Fondo u otro" si no cotiza.`, true);
     if (clase !== "manual" && !(cantidad > 0)) return msg("f-msg", "Poné cuántos CEDEARs o acciones fueron.", true);
     if (!(monto > 0)) return msg("f-msg", "Poné el monto total de la orden en pesos.", true);
     if (claseDe(activo) && claseDe(activo) !== clase) return msg("f-msg", `${activo} ya está cargado como ${claseDe(activo) === "manual" ? "fondo" : "CEDEAR o acción"}. Elegí ese tipo.`, true);
     if (clase !== "manual" && tipo === "venta" && cantidad > tenencia(activo) + 1e-9) return msg("f-msg", `No alcanza: de ${activo} tiene ${ars.format(tenencia(activo))}.`, true);
-    datos.movs.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), fecha: $("f-fecha").value || hoyISO(), tipo, activo, clase, cantidad, monto });
-    guardar();
+    const n = copia();
+    n.movs.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), fecha: $("f-fecha").value || hoyISO(), tipo, activo, clase, cantidad, monto });
+    $("f-guardar").disabled = true; $("f-guardar").textContent = "Guardando…";
+    const err = await guardar(n, `${tipo} de ${clase === "manual" ? "" : cantidad + " "}${activo}`);
+    $("f-guardar").disabled = false; $("f-guardar").textContent = "Guardar";
+    if (err) return msg("f-msg", err, true);
     $("f-cant").value = ""; $("f-monto").value = "";
-    msg("f-msg", `Guardado: ${tipo === "compra" ? "compra" : "venta"} de ${activo}.`);
+    if (pideClave) $("l-clave").hidden = true;
+    msg("f-msg", `Guardado: ${tipo} de ${activo}.`);
     dibujar(); traerPrecios();
   });
   $("ir-cargar").addEventListener("click", () => { $("cargar").scrollIntoView({ behavior: "smooth" }); setTimeout(() => $("f-activo").focus(), 300); });
-  $("refrescar").addEventListener("click", traerPrecios);
+  $("refrescar").addEventListener("click", async () => { await cargarDatos(); dibujar(); traerPrecios(); });
 
-  // ---------- respaldo y link ----------
-  const copiar = async (texto, ok) => {
-    try { await navigator.clipboard.writeText(texto); msg("g-msg", ok); }
+  // ---------- respaldo ----------
+  $("copiar-resp").addEventListener("click", async () => {
+    const texto = JSON.stringify(datos);
+    try { await navigator.clipboard.writeText(texto); msg("g-msg", "Respaldo copiado. Guardalo en una nota o mandalo por mensaje."); }
     catch (e) { $("importar").hidden = false; $("imp-texto").value = texto; $("imp-texto").select(); msg("g-msg", "No pude copiar solo: el texto quedó seleccionado abajo, copialo a mano."); }
-  };
-  $("copiar-link").addEventListener("click", () => copiar(`${location.origin}${location.pathname}#datos=${b64.a(JSON.stringify(datos))}`, "Link copiado. Quien lo abra puede cargar esta cartera en su dispositivo."));
-  $("copiar-resp").addEventListener("click", () => copiar(JSON.stringify(datos), "Respaldo copiado. Guardalo en una nota o mandátelo por mensaje."));
+  });
   $("ver-importar").addEventListener("click", () => { $("importar").hidden = false; $("imp-texto").value = ""; $("imp-texto").focus(); });
   $("imp-no").addEventListener("click", () => { $("importar").hidden = true; });
-  $("imp-ok").addEventListener("click", () => {
-    try { datos = normalizar(JSON.parse($("imp-texto").value)); guardar(); $("importar").hidden = true; msg("g-msg", `Cargados ${datos.movs.length} movimientos.`); dibujar(); traerPrecios(); }
-    catch (e) { msg("g-msg", "Ese texto no es un respaldo de esta cartera. Copialo de nuevo completo.", true); }
+  $("imp-ok").addEventListener("click", async () => {
+    let n;
+    try { n = normalizar(JSON.parse($("imp-texto").value)); } catch (e) { return msg("g-msg", "Ese texto no es un respaldo de esta cartera. Copialo de nuevo completo.", true); }
+    const err = await guardar(n, "carga un respaldo");
+    if (err) return msg("g-msg", err, true);
+    $("importar").hidden = true; msg("g-msg", `Cargados ${datos.movs.length} movimientos.`); dibujar(); traerPrecios();
   });
-  let pendiente = null;
-  const m = location.hash.match(/^#datos=([A-Za-z0-9_-]+)$/);
-  if (m) { try { pendiente = normalizar(JSON.parse(b64.de(m[1]))); $("aviso-link").hidden = false; } catch (e) { /* link roto */ } history.replaceState(null, "", location.pathname); }
-  $("link-si").addEventListener("click", () => { datos = pendiente; guardar(); $("aviso-link").hidden = true; dibujar(); traerPrecios(); });
-  $("link-no").addEventListener("click", () => { $("aviso-link").hidden = true; });
 
-  leer();
-  dibujar();
-  traerPrecios();
+  (async () => {
+    await Promise.all([cargarDatos(), cargarCatalogo()]);
+    dibujar();
+    traerPrecios();
+  })();
   setInterval(() => { if (!document.hidden) traerPrecios(); }, 60000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden && (!ultima || Date.now() - ultima > 60000)) traerPrecios(); });
 })();
