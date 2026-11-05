@@ -1,0 +1,182 @@
+{
+ "version": 1,
+ "movs": [
+  {
+   "id": "m00",
+   "fecha": "2026-09-14",
+   "tipo": "compra",
+   "activo": "VIST",
+   "clase": "mercado",
+   "cantidad": 3,
+   "monto": 125180.94
+  },
+  {
+   "id": "m01",
+   "fecha": "2026-09-14",
+   "tipo": "compra",
+   "activo": "VIST",
+   "clase": "mercado",
+   "cantidad": 2,
+   "monto": 82888.99
+  },
+  {
+   "id": "m02",
+   "fecha": "2026-09-15",
+   "tipo": "compra",
+   "activo": "IBIT",
+   "clase": "mercado",
+   "cantidad": 17,
+   "monto": 118169.28
+  },
+  {
+   "id": "m03",
+   "fecha": "2026-09-15",
+   "tipo": "compra",
+   "activo": "VIST",
+   "clase": "mercado",
+   "cantidad": 2,
+   "monto": 84664.61
+  },
+  {
+   "id": "m04",
+   "fecha": "2026-09-16",
+   "tipo": "compra",
+   "activo": "SPY",
+   "clase": "mercado",
+   "cantidad": 2,
+   "monto": 40798.81
+  },
+  {
+   "id": "m05",
+   "fecha": "2026-09-16",
+   "tipo": "compra",
+   "activo": "SPY",
+   "clase": "mercado",
+   "cantidad": 2,
+   "monto": 40818.99
+  },
+  {
+   "id": "m06",
+   "fecha": "2026-09-23",
+   "tipo": "compra",
+   "activo": "SPY",
+   "clase": "mercado",
+   "cantidad": 3,
+   "monto": 62166.74
+  },
+  {
+   "id": "m07",
+   "fecha": "2026-10-02",
+   "tipo": "venta",
+   "activo": "VIST",
+   "clase": "mercado",
+   "cantidad": 3,
+   "monto": 102388.33
+  },
+  {
+   "id": "m08",
+   "fecha": "2026-10-05",
+   "tipo": "compra",
+   "activo": "SPY",
+   "clase": "mercado",
+   "cantidad": 4,
+   "monto": 83857.51
+  },
+  {
+   "id": "m09",
+   "fecha": "2026-10-07",
+   "tipo": "compra",
+   "activo": "SPY",
+   "clase": "mercado",
+   "cantidad": 14,
+   "monto": 295196.2
+  },
+  {
+   "id": "m10",
+   "fecha": "2026-10-07",
+   "tipo": "compra",
+   "activo": "IBIT",
+   "clase": "mercado",
+   "cantidad": 13,
+   "monto": 99676.63
+  },
+  {
+   "id": "m11",
+   "fecha": "2026-10-21",
+   "tipo": "compra",
+   "activo": "GOOGL",
+   "clase": "mercado",
+   "cantidad": 10,
+   "monto": 94934.94
+  },
+  {
+   "id": "m12",
+   "fecha": "2026-10-22",
+   "tipo": "compra",
+   "activo": "FCI",
+   "clase": "manual",
+   "cantidad": 0,
+   "monto": 180000.0
+  },
+  {
+   "id": "m13",
+   "fecha": "2026-10-30",
+   "tipo": "venta",
+   "activo": "IBIT",
+   "clase": "mercado",
+   "cantidad": 30,
+   "monto": 214301.16
+  },
+  {
+   "id": "m14",
+   "fecha": "2026-11-02",
+   "tipo": "venta",
+   "activo": "VIST",
+   "clase": "mercado",
+   "cantidad": 2,
+   "monto": 74251.38
+  },
+  {
+   "id": "m15",
+   "fecha": "2026-11-02",
+   "tipo": "venta",
+   "activo": "GOOGL",
+   "clase": "mercado",
+   "cantidad": 4,
+   "monto": 32165.02
+  },
+  {
+   "id": "m16",
+   "fecha": "2026-11-02",
+   "tipo": "compra",
+   "activo": "FCI",
+   "clase": "manual",
+   "cantidad": 0,
+   "monto": 214293.88
+  },
+  {
+   "id": "m17",
+   "fecha": "2026-11-03",
+   "tipo": "compra",
+   "activo": "FCI",
+   "clase": "manual",
+   "cantidad": 0,
+   "monto": 106376.4
+  },
+  {
+   "id": "m18",
+   "fecha": "2026-11-04",
+   "tipo": "venta",
+   "activo": "VIST",
+   "clase": "mercado",
+   "cantidad": 2,
+   "monto": 72108.37
+  }
+ ],
+ "manual": {
+  "FCI": {
+   "valor": 502119,
+   "fecha": "2026-11-04"
+  }
+ }
+}

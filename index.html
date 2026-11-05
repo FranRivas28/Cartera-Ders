@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cartera Ders</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Terminal de una sola columna: resumen arriba, tenencias en tarjetas, movimientos abajo. */
+:root {
+  --bg: #f3f5f4; --panel: #ffffff; --line: #dde3e0; --fg: #17201c; --muted: #5d6b65;
+  --accent: #1f6f5c; --up: #18794e; --down: #c2382f; --warn: #a26a00; --soft: #e8efec;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0f1412; --panel: #161d1a; --line: #26302c; --fg: #e4ebe7; --muted: #92a19a;
+    --accent: #4fc1a0; --up: #45c486; --down: #f0776c; --warn: #e2b04a; --soft: #1d2622; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.45 var(--sans);
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+.wrap { max-width: 64rem; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+h1 { font-size: 1.35rem; margin: 0; font-weight: 600; letter-spacing: -0.01em; }
+h2 { font-size: 0.8rem; margin: 0; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+p { margin: 0; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); font-size: 0.85rem; }
+.up { color: var(--up); } .down { color: var(--down); }
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.estado { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.dot.vivo { background: var(--up); box-shadow: 0 0 0 3px color-mix(in srgb, var(--up) 25%, transparent); }
+.dot.error { background: var(--down); }
+button, .btn { font: inherit; font-size: 0.9rem; border: 1px solid var(--line); background: var(--panel); color: var(--fg);
+  border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+button.prim { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
+button.link { border: 0; background: none; padding: 4px 6px; color: var(--muted); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: 10px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tile .big { font-family: var(--mono); font-size: 1.3rem; font-weight: 500; overflow-wrap: anywhere; }
+.comp { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--soft); }
+.comp i { display: block; height: 100%; }
+.leyenda { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.leyenda span { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; }
+.leyenda b { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 10px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.card .cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.card .tk { font-family: var(--mono); font-weight: 500; font-size: 1.1rem; }
+.kv { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; }
+.kv div { display: flex; flex-direction: column; min-width: 0; }
+.kv span:first-child { color: var(--muted); font-size: 0.78rem; }
+.spark { width: 100%; height: 64px; display: block; }
+.manual { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.manual input { width: 9rem; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+form.mov { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: 10px; align-items: end; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--muted); }
+input, select { font: inherit; font-size: 0.95rem; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; min-width: 0; }
+.aviso { font-size: 0.85rem; padding: 8px 10px; border-radius: 8px; background: var(--soft); }
+.aviso.mal { color: var(--down); }
+.tabla { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+th { text-align: left; color: var(--muted); font-weight: 500; font-size: 0.75rem; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th.r, td.r { text-align: right; }
+.vacio { text-align: center; padding: 28px 12px; color: var(--muted); }
+.fila { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+textarea { font: 0.8rem var(--mono); width: 100%; min-height: 6rem; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+#f-activo { text-transform: uppercase; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Cartera</h1>
+      <p class="muted estado"><i class="dot" id="dot"></i><span id="estado">Buscando precios…</span></p>
+    </div>
+    <div class="fila">
+      <button id="refrescar" type="button">Actualizar</button>
+      <button class="prim" id="ir-cargar" type="button">Cargar movimiento</button>
+    </div>
+  </header>
+
+  <p class="aviso mal" id="aviso-local" hidden>Los movimientos no se están guardando en el repo: falta poner GITHUB_TOKEN en Vercel. Mientras tanto quedan solo en este navegador.</p>
+
+  <section class="tiles" aria-label="Resumen">
+    <div class="tile"><span class="muted">Vale hoy</span><span class="big" id="t-valor">—</span><span class="muted" id="t-valor-nota">&nbsp;</span></div>
+    <div class="tile"><span class="muted">Hoy</span><span class="big" id="t-dia">—</span><span class="muted" id="t-dia-nota">&nbsp;</span></div>
+    <div class="tile"><span class="muted">En lo que tiene</span><span class="big" id="t-abierto">—</span><span class="muted" id="t-abierto-nota">&nbsp;</span></div>
+    <div class="tile"><span class="muted">Resultado total</span><span class="big" id="t-total">—</span><span class="muted">Incluye lo que ya vendió</span></div>
+  </section>
+
+  <section class="panel" id="sec-comp" hidden>
+    <h2>Cómo está repartida</h2>
+    <div class="comp" id="comp"></div>
+    <div class="leyenda" id="comp-ley"></div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:10px">
+    <h2>Lo que tiene</h2>
+    <div class="cards" id="cards"></div>
+    <p class="vacio panel" id="cards-vacio">Todavía no hay movimientos. Cargá la primera compra abajo.</p>
+    <p class="muted">Precio del CEDEAR en pesos en BYMA, con unos 15 minutos de demora. Se actualiza solo cada minuto con la página abierta. El rango a un mes sale de cuánto se movió el precio en los últimos 60 días: no dice si va a subir o bajar.</p>
+  </section>
+
+  <section class="panel" id="cargar">
+    <h2>Cargar movimiento</h2>
+    <form class="mov" id="form" autocomplete="off">
+      <label>Fecha<input type="date" id="f-fecha" required></label>
+      <label>Operación<select id="f-tipo"><option value="compra">Compra</option><option value="venta">Venta</option></select></label>
+      <label>Ticker<input id="f-activo" list="activos" placeholder="Escribí SPY, GGAL, YPFD…" required autocapitalize="characters" spellcheck="false"></label>
+      <label>Tipo de activo<select id="f-clase"><option value="mercado">CEDEAR o acción (precio en vivo)</option><option value="manual">Fondo u otro (valor a mano)</option></select></label>
+      <label id="l-cant">Cantidad<input type="number" id="f-cant" min="0" step="any" inputmode="decimal" placeholder="25"></label>
+      <label>Monto total en $<input type="number" id="f-monto" min="0" step="any" inputmode="decimal" placeholder="Con comisiones" required></label>
+      <label id="l-clave" hidden>Clave para guardar<input type="password" id="f-clave" autocomplete="current-password"></label>
+      <button class="prim" type="submit" id="f-guardar">Guardar</button>
+    </form>
+    <datalist id="activos"></datalist>
+    <p class="muted" id="f-info">Están todos los CEDEARs de BYMA y las acciones del Merval: escribí el ticker y lo busco solo.</p>
+    <p class="aviso" id="f-msg" hidden></p>
+    <p class="muted">El monto es lo que muestra la app del broker en la orden (incluye comisiones). Para un fondo, "Compra" es suscripción y "Venta" es rescate; el valor de hoy se carga en su tarjeta. Cada movimiento se guarda en el repo de GitHub, así que lo ven todos los que abren esta página.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Lo que ya vendió</h2>
+    <div class="tabla"><table>
+      <thead><tr><th>Activo</th><th class="r">Cantidad</th><th class="r">Pagó</th><th class="r">Cobró</th><th class="r">Resultado</th><th class="r">%</th></tr></thead>
+      <tbody id="cerradas"></tbody>
+    </table></div>
+    <p class="muted" id="cerradas-vacio">Cuando venda algo, el resultado aparece acá (contra el precio promedio que pagó).</p>
+  </section>
+
+  <section class="panel">
+    <h2>Movimientos</h2>
+    <div class="tabla"><table>
+      <thead><tr><th>Fecha</th><th>Operación</th><th>Activo</th><th class="r">Cantidad</th><th class="r">Monto</th><th class="r">Precio c/u</th><th></th></tr></thead>
+      <tbody id="movs"></tbody>
+    </table></div>
+  </section>
+
+  <section class="panel">
+    <h2>Respaldo</h2>
+    <p class="muted" id="g-donde">Los movimientos se guardan en el archivo data/cartera.json del repo. Cada cambio queda registrado en el historial de GitHub, así que se puede volver atrás.</p>
+    <div class="fila">
+      <button id="copiar-resp" type="button">Copiar respaldo</button>
+      <button id="ver-importar" type="button">Pegar respaldo</button>
+    </div>
+    <div id="importar" hidden style="display:flex;flex-direction:column;gap:8px">
+      <textarea id="imp-texto" placeholder="Pegá acá el respaldo"></textarea>
+      <div class="fila"><button class="prim" id="imp-ok" type="button">Cargar respaldo</button><button id="imp-no" type="button">Cancelar</button></div>
+    </div>
+    <p class="aviso" id="g-msg" hidden></p>
+  </section>
+</div>
+
+<script>
+(() => {
+  const CLAVE = "cartera-ders-v1";
+  const COLORES = ["#1f6f5c", "#c98a1b", "#3b6fb6", "#a4477f", "#6b8e23", "#7a5cc2", "#2b9aa6", "#b5553c"];
+  const $ = (id) => document.getElementById(id);
+  const ars = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
+  const ars2 = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pcf = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const $f = (x) => (x == null || isNaN(x) ? "—" : (x < 0 ? "–$ " : "$ ") + ars.format(Math.abs(x)));
+  const $s = (x) => (x == null || isNaN(x) ? "—" : (x > 0 ? "+$ " : x < 0 ? "–$ " : "$ ") + ars.format(Math.abs(x)));
+  const $p = (x) => (x == null || isNaN(x) || !isFinite(x) ? "—" : (x > 0 ? "+" : x < 0 ? "–" : "") + pcf.format(Math.abs(x)) + "%");
+  const $u = (x) => (x == null || isNaN(x) ? "—" : "$ " + (Math.abs(x) < 1000 ? ars2 : ars).format(x));
+  const fecha = (s) => s ? `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : "";
+  const signo = (el, x) => { el.classList.remove("up", "down"); if (x > 0.5) el.classList.add("up"); else if (x < -0.5) el.classList.add("down"); };
+
+  // ---------- datos guardados (en el repo vía /api/movimientos; si no está conectado, en el navegador) ----------
+  const vacio = () => ({ version: 1, movs: [], manual: {} });
+  let datos = vacio(), sha = null, modo = "local", pideClave = false;
+  const local = {
+    leer: () => { try { const t = localStorage.getItem(CLAVE); return t ? normalizar(JSON.parse(t)) : null; } catch (e) { return null; } },
+    escribir: () => { try { localStorage.setItem(CLAVE, JSON.stringify(datos)); } catch (e) { /* sin almacenamiento */ } },
+  };
+  const clave = { leer: () => { try { return localStorage.getItem(CLAVE + "-clave") || ""; } catch (e) { return ""; } },
+    poner: (c) => { try { localStorage.setItem(CLAVE + "-clave", c); } catch (e) { /* nada */ } } };
+  async function cargarDatos() {
+    try {
+      const r = await fetch("/api/movimientos", { cache: "no-store" });
+      if (r.ok) {
+        const j = await r.json();
+        datos = normalizar(j.datos); sha = j.sha; modo = "repo"; pideClave = !!j.clave;
+        $("l-clave").hidden = !pideClave || !!clave.leer();
+        local.escribir();
+        $("aviso-local").hidden = true;
+        return;
+      }
+    } catch (e) { /* sin servidor */ }
+    modo = "local";
+    datos = local.leer() || vacio();
+    $("aviso-local").hidden = false;
+    $("g-donde").textContent = "Por ahora los movimientos se guardan solo en este navegador. Copiá el respaldo para no perderlos.";
+  }
+  // Guarda el estado nuevo. Si falla, vuelve al anterior y devuelve el motivo.
+  async function guardar(nuevo, mensaje) {
+    const antes = datos;
+    datos = nuevo;
+    if (modo !== "repo") { local.escribir(); return null; }
+    if ($("f-clave").value) clave.poner($("f-clave").value);
+    try {
+      const r = await fetch("/api/movimientos", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ datos: nuevo, sha, clave: clave.leer(), mensaje }) });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) { sha = j.sha; local.escribir(); return null; }
+      datos = antes;
+      if (r.status === 401) { clave.poner(""); $("l-clave").hidden = false; return "La clave no es correcta. Escribila y volvé a guardar."; }
+      if (r.status === 409) { await cargarDatos(); return "Alguien guardó un cambio al mismo tiempo. Ya traje lo último: volvé a cargar el movimiento."; }
+      return j.error || "No se pudo guardar. Probá de nuevo en un rato.";
+    } catch (e) { datos = antes; return "Sin conexión: no se guardó. Probá de nuevo."; }
+  }
+  const copia = () => JSON.parse(JSON.stringify(datos));
+
+  // ---------- lista de CEDEARs y acciones ----------
+  let catalogo = new Map();
+  async function cargarCatalogo() {
+    try {
+      const r = await fetch("/data/activos.json");
+      const lista = await r.json();
+      catalogo = new Map(lista.map((a) => [a.t, a]));
+      $("activos").replaceChildren(...lista.map((a) => { const o = document.createElement("option"); o.value = a.t; o.label = `${a.n} · ${a.c}${a.r ? " " + a.r : ""}`; return o; }));
+    } catch (e) { /* sin lista: igual se busca el precio */ }
+  }
+  const nombre = (t) => catalogo.get(t)?.n || "";
+  function normalizar(d) {
+    if (!d || !Array.isArray(d.movs)) throw new Error("formato");
+    return {
+      version: 1,
+      movs: d.movs.filter((m) => m && m.fecha && m.activo && (m.tipo === "compra" || m.tipo === "venta")).map((m) => ({
+        id: String(m.id || Math.random().toString(36).slice(2)), fecha: String(m.fecha).slice(0, 10), tipo: m.tipo,
+        activo: String(m.activo).toUpperCase().trim(), clase: m.clase === "manual" ? "manual" : "mercado",
+        cantidad: Number(m.cantidad) || 0, monto: Number(m.monto) || 0,
+      })),
+      manual: Object.fromEntries(Object.entries(d.manual || {}).map(([k, v]) => [String(k).toUpperCase(), { valor: Number(v.valor) || 0, fecha: String(v.fecha || "") }])),
+    };
+  }
+
+  // ---------- cálculo de la cartera (costo promedio) ----------
+  function calcular() {
+    const pos = {}, cerr = {};
+    const orden = [...datos.movs].sort((a, b) => a.fecha.localeCompare(b.fecha) || a.id.localeCompare(b.id));
+    for (const m of orden) {
+      const p = (pos[m.activo] ||= { activo: m.activo, clase: m.clase, cantidad: 0, costo: 0, aportes: 0 });
+      if (m.clase === "manual") { p.clase = "manual"; p.costo += m.tipo === "compra" ? m.monto : -m.monto; continue; }
+      if (m.tipo === "compra") { p.cantidad += m.cantidad; p.costo += m.monto; }
+      else {
+        const prom = p.cantidad > 0 ? p.costo / p.cantidad : 0;
+        const q = Math.min(m.cantidad, p.cantidad);
+        const c = (cerr[m.activo] ||= { activo: m.activo, cantidad: 0, pagado: 0, cobrado: 0 });
+        c.cantidad += m.cantidad; c.pagado += prom * q; c.cobrado += m.monto;
+        p.cantidad -= q; p.costo -= prom * q;
+        if (p.cantidad < 1e-9) { p.cantidad = 0; p.costo = 0; }
+      }
+    }
+    const abiertas = Object.values(pos).filter((p) => p.clase === "manual" ? (p.costo > 0.5 || datos.manual[p.activo]?.valor > 0) : p.cantidad > 0);
+    return { abiertas, cerradas: Object.values(cerr) };
+  }
+  const tenencia = (activo, salvoId) => {
+    let q = 0;
+    for (const m of datos.movs) if (m.activo === activo && m.id !== salvoId && m.clase !== "manual") q += m.tipo === "compra" ? m.cantidad : -m.cantidad;
+    return q;
+  };
+
+  // ---------- precios ----------
+  let precios = {}, ultima = null, cargando = false;
+  async function traerPrecios() {
+    const tk = [...new Set(datos.movs.filter((m) => m.clase !== "manual").map((m) => m.activo))];
+    const abiertos = calcular().abiertas.filter((p) => p.clase !== "manual").map((p) => p.activo);
+    const pedir = tk.filter((t) => abiertos.includes(t));
+    if (!pedir.length) { estado(precios, "Sin activos con precio en vivo"); return; }
+    if (cargando) return; cargando = true;
+    try {
+      const r = await fetch(`/api/cotizacion?t=${encodeURIComponent(pedir.join(","))}`, { cache: "no-store" });
+      if (!r.ok) throw new Error(r.status);
+      const j = await r.json();
+      precios = { ...precios, ...j };
+      ultima = new Date();
+      const faltan = pedir.filter((t) => !j[t]);
+      estado(true, faltan.length ? `Sin precio para ${faltan.join(", ")}` : null);
+    } catch (e) {
+      estado(false, "No se pudieron traer los precios. Reintento en un minuto.");
+    } finally { cargando = false; dibujar(); }
+  }
+  function estado(ok, texto) {
+    const dot = $("dot");
+    dot.className = "dot" + (ok === true ? " vivo" : ok === false ? " error" : "");
+    const hora = ultima ? ultima.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "";
+    $("estado").textContent = texto ? (hora ? `Actualizado ${hora} · ${texto}` : texto) : `En vivo · actualizado ${hora}`;
+  }
+
+  // ---------- dibujo ----------
+  function rango(hist) {
+    const v = hist.slice(-61).map((x) => x[1]);
+    if (v.length < 20) return null;
+    const r = []; for (let i = 1; i < v.length; i++) r.push(Math.log(v[i] / v[i - 1]));
+    const m = r.reduce((a, b) => a + b, 0) / r.length;
+    const sd = Math.sqrt(r.reduce((a, b) => a + (b - m) ** 2, 0) / (r.length - 1)) * Math.sqrt(20);
+    const p = v.at(-1);
+    return { piso: p * Math.exp(-sd), techo: p * Math.exp(sd), pct: sd * 100 };
+  }
+  function spark(hist, prom, color) {
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("class", "spark"); svg.setAttribute("viewBox", "0 0 300 64"); svg.setAttribute("preserveAspectRatio", "none");
+    const v = hist.slice(-90).map((x) => x[1]);
+    if (v.length < 2) return svg;
+    const ys = prom > 0 ? [...v, prom] : v;
+    const lo = Math.min(...ys), hi = Math.max(...ys), pad = (hi - lo) * 0.08 || 1;
+    const Y = (x) => 60 - ((x - lo + pad) / (hi - lo + 2 * pad)) * 56;
+    const X = (i) => (i / (v.length - 1)) * 296 + 2;
+    const add = (tag, at) => { const e = document.createElementNS(ns, tag); for (const k in at) e.setAttribute(k, at[k]); svg.appendChild(e); return e; };
+    add("path", { d: `M2,64 ` + v.map((y, i) => `L${X(i).toFixed(1)},${Y(y).toFixed(1)}`).join(" ") + ` L298,64 Z`, fill: color, "fill-opacity": "0.1", stroke: "none" });
+    if (prom > 0) add("line", { x1: 0, x2: 300, y1: Y(prom), y2: Y(prom), stroke: "currentColor", "stroke-opacity": "0.45", "stroke-dasharray": "4 3", "vector-effect": "non-scaling-stroke" });
+    add("path", { d: v.map((y, i) => `${i ? "L" : "M"}${X(i).toFixed(1)},${Y(y).toFixed(1)}`).join(" "), fill: "none", stroke: color, "stroke-width": "2", "stroke-linejoin": "round", "stroke-linecap": "round", "vector-effect": "non-scaling-stroke" });
+    return svg;
+  }
+  const kv = (pares) => {
+    const d = document.createElement("div"); d.className = "kv";
+    for (const [k, v, cls] of pares) {
+      const c = document.createElement("div");
+      const a = document.createElement("span"); a.textContent = k;
+      const b = document.createElement("span"); b.className = "num" + (cls ? " " + cls : ""); b.textContent = v;
+      c.append(a, b); d.appendChild(c);
+    }
+    return d;
+  };
+  const cls = (x) => (x > 0.5 ? "up" : x < -0.5 ? "down" : "");
+
+  function dibujar() {
+    const { abiertas, cerradas } = calcular();
+    let valor = 0, costo = 0, dia = 0, valorAyer = 0, sinPrecio = 0;
+    const filas = abiertas.map((p, i) => {
+      let precio = null, ant = null, v = null, hist = [];
+      if (p.clase === "manual") { v = datos.manual[p.activo]?.valor ?? p.costo; }
+      else {
+        const q = precios[p.activo];
+        if (q && q.precio) { precio = q.precio; ant = q.anterior; v = precio * p.cantidad; hist = q.historia || []; }
+      }
+      if (v == null) sinPrecio++;
+      else {
+        valor += v; costo += p.costo;
+        if (ant) { dia += (precio - ant) * p.cantidad; valorAyer += ant * p.cantidad; }
+      }
+      return { ...p, precio, ant, v, hist, color: COLORES[i % COLORES.length] };
+    });
+    const realizado = cerradas.reduce((a, c) => a + c.cobrado - c.pagado, 0);
+    const abierto = valor - costo;
+
+    $("t-valor").textContent = filas.length ? $f(valor) : "—";
+    $("t-valor-nota").textContent = sinPrecio ? `Falta el precio de ${sinPrecio} activo${sinPrecio > 1 ? "s" : ""}` : `${filas.length} activo${filas.length === 1 ? "" : "s"}`;
+    $("t-dia").textContent = valorAyer ? $s(dia) : "—"; signo($("t-dia"), dia);
+    $("t-dia-nota").textContent = valorAyer ? `${$p((dia / valorAyer) * 100)} contra el cierre anterior` : "Sin cierre anterior";
+    $("t-abierto").textContent = filas.length ? $s(abierto) : "—"; signo($("t-abierto"), abierto);
+    $("t-abierto-nota").textContent = costo > 0 ? `${$p((abierto / costo) * 100)} sobre lo pagado` : " ";
+    $("t-total").textContent = datos.movs.length ? $s(abierto + realizado) : "—"; signo($("t-total"), abierto + realizado);
+
+    // composición
+    const conValor = filas.filter((f) => f.v > 0);
+    $("sec-comp").hidden = conValor.length < 2;
+    $("comp").replaceChildren(...conValor.map((f) => { const i = document.createElement("i"); i.style.width = (f.v / valor) * 100 + "%"; i.style.background = f.color; i.title = f.activo; return i; }));
+    $("comp-ley").replaceChildren(...conValor.map((f) => { const s = document.createElement("span"); const b = document.createElement("b"); b.style.background = f.color; s.append(b, `${f.activo} ${pcf.format((f.v / valor) * 100)}%`); return s; }));
+
+    // tarjetas
+    $("cards-vacio").hidden = filas.length > 0;
+    $("cards").replaceChildren(...filas.map((f) => {
+      const c = document.createElement("article"); c.className = "card";
+      const cab = document.createElement("div"); cab.className = "cab";
+      const tk = document.createElement("span"); tk.className = "tk"; tk.textContent = f.activo;
+      if (nombre(f.activo)) { tk.title = nombre(f.activo); const nm = document.createElement("span"); nm.className = "muted"; nm.style.fontFamily = "var(--sans)"; nm.style.fontWeight = "400"; const nn = nombre(f.activo); nm.textContent = " " + (nn.length > 18 ? nn.slice(0, 17) + "…" : nn); tk.appendChild(nm); }
+      const der = document.createElement("span"); der.className = "num";
+      if (f.clase === "manual") { der.className = "muted"; der.textContent = datos.manual[f.activo]?.fecha ? `Valor del ${fecha(datos.manual[f.activo].fecha)}` : "Cargá el valor de hoy"; }
+      else if (f.precio) { der.textContent = `${$u(f.precio)} `; const d = document.createElement("span"); const dp = f.ant ? ((f.precio / f.ant) - 1) * 100 : NaN; d.textContent = $p(dp); d.className = dp > 0 ? "up" : dp < 0 ? "down" : ""; der.appendChild(d); }
+      else der.textContent = "Sin precio";
+      cab.append(tk, der); c.appendChild(cab);
+      const res = f.v != null ? f.v - f.costo : NaN;
+      if (f.clase === "manual") {
+        c.appendChild(kv([["Puso (neto)", $f(f.costo)], ["Vale", $f(f.v)], ["Resultado", $s(res), cls(res)], ["%", $p((res / f.costo) * 100), cls(res)]]));
+        const fm = document.createElement("form"); fm.className = "manual";
+        const inp = document.createElement("input"); inp.type = "number"; inp.step = "any"; inp.min = "0"; inp.inputMode = "decimal"; inp.placeholder = "Valor de hoy"; inp.id = "manual-" + f.activo; inp.setAttribute("aria-label", `Valor de hoy de ${f.activo}`);
+        const bt = document.createElement("button"); bt.type = "submit"; bt.textContent = "Actualizar valor";
+        fm.append(inp, bt);
+        fm.addEventListener("submit", async (e) => {
+          e.preventDefault(); const x = Number(inp.value); if (!(x >= 0) || inp.value === "") return;
+          bt.disabled = true;
+          const n = copia(); n.manual[f.activo] = { valor: x, fecha: hoyISO() };
+          const err = await guardar(n, `valor de ${f.activo}`);
+          bt.disabled = false;
+          if (err) msg("f-msg", err, true);
+          dibujar();
+        });
+        c.appendChild(fm);
+      } else {
+        const prom = f.cantidad ? f.costo / f.cantidad : NaN;
+        c.appendChild(kv([["Cantidad", ars.format(f.cantidad)], ["Precio promedio", $u(prom)], ["Vale", $f(f.v)], ["Resultado", f.v != null ? `${$s(res)} (${$p((res / f.costo) * 100)})` : "—", cls(res)]]));
+        if (f.hist.length) {
+          c.appendChild(spark(f.hist, prom, f.color));
+          const r = rango(f.hist);
+          const n = document.createElement("p"); n.className = "muted";
+          n.textContent = r ? `Últimos 3 meses; la línea punteada es lo que pagó en promedio. Rango probable a un mes: ${$u(r.piso)} a ${$u(r.techo)} (±${pcf.format(r.pct)}%).` : "Últimos 3 meses; la línea punteada es lo que pagó en promedio.";
+          c.appendChild(n);
+        }
+      }
+      return c;
+    }));
+
+    // cerradas
+    $("cerradas-vacio").hidden = cerradas.length > 0;
+    $("cerradas").replaceChildren(...cerradas.sort((a, b) => (a.cobrado - a.pagado) - (b.cobrado - b.pagado)).map((c) => {
+      const tr = document.createElement("tr"); const r = c.cobrado - c.pagado;
+      [[c.activo], [ars.format(c.cantidad), "r num"], [$f(c.pagado), "r num"], [$f(c.cobrado), "r num"], [$s(r), "r num " + cls(r)], [$p((r / c.pagado) * 100), "r num " + cls(r)]]
+        .forEach(([t, k]) => { const td = document.createElement("td"); td.textContent = t; if (k) td.className = k; tr.appendChild(td); });
+      return tr;
+    }));
+
+    // movimientos
+    const movs = [...datos.movs].sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id.localeCompare(a.id));
+    $("movs").replaceChildren(...(movs.length ? movs.map((m) => {
+      const tr = document.createElement("tr");
+      const op = m.clase === "manual" ? (m.tipo === "compra" ? "Suscripción" : "Rescate") : (m.tipo === "compra" ? "Compra" : "Venta");
+      [[fecha(m.fecha)], [op, m.tipo === "venta" ? "down" : ""], [m.activo], [m.clase === "manual" ? "" : ars.format(m.cantidad), "r num"], [$f(m.monto), "r num"], [m.cantidad ? $u(m.monto / m.cantidad) : "", "r num"]]
+        .forEach(([t, k]) => { const td = document.createElement("td"); td.textContent = t; if (k) td.className = k; tr.appendChild(td); });
+      const td = document.createElement("td"); td.className = "r";
+      const b = document.createElement("button"); b.className = "link"; b.type = "button"; b.textContent = "Borrar";
+      b.addEventListener("click", async () => {
+        if (b.dataset.seguro) {
+          b.disabled = true;
+          const n = copia(); n.movs = n.movs.filter((x) => x.id !== m.id);
+          const err = await guardar(n, `borra ${m.tipo} de ${m.activo} del ${fecha(m.fecha)}`);
+          if (err) msg("f-msg", err, true);
+          dibujar(); traerPrecios();
+        }
+        else { b.dataset.seguro = "1"; b.textContent = "¿Seguro?"; b.classList.add("down"); setTimeout(() => { if (b.isConnected) { delete b.dataset.seguro; b.textContent = "Borrar"; b.classList.remove("down"); } }, 3000); }
+      });
+      td.appendChild(b); tr.appendChild(td);
+      return tr;
+    }) : [(() => { const tr = document.createElement("tr"); const td = document.createElement("td"); td.colSpan = 7; td.className = "vacio"; td.textContent = "Sin movimientos todavía."; tr.appendChild(td); return tr; })()]));
+
+  }
+
+  // ---------- formulario ----------
+  const hoyISO = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+  function msg(id, texto, mal) { const e = $(id); e.textContent = texto; e.hidden = !texto; e.classList.toggle("mal", !!mal); if (texto && !mal) setTimeout(() => { if (e.textContent === texto) e.hidden = true; }, 4000); }
+  $("f-fecha").value = hoyISO();
+  const claseDe = (a) => datos.movs.find((m) => m.activo === a)?.clase;
+  const ajustarClase = () => { const man = $("f-clase").value === "manual"; $("l-cant").hidden = man; $("f-cant").required = !man; };
+  $("f-clase").addEventListener("change", ajustarClase); ajustarClase();
+
+  // Búsqueda del ticker: primero en la lista; después se confirma el precio en vivo.
+  let busqueda = { t: "", ok: false };
+  const limpiarTk = () => $("f-activo").value.toUpperCase().trim().replace(/\s+/g, "");
+  async function buscarTicker() {
+    const t = limpiarTk();
+    const info = $("f-info");
+    if (!t) { info.textContent = "Escribí el ticker y lo busco solo."; return; }
+    const ya = claseDe(t), cat = catalogo.get(t);
+    if (ya) { $("f-clase").value = ya; ajustarClase(); }
+    else if (cat) { $("f-clase").value = "mercado"; ajustarClase(); }
+    if ($("f-clase").value === "manual") { busqueda = { t, ok: true }; info.textContent = `${t}: fondo u otro activo, el valor se carga a mano.`; return; }
+    info.textContent = cat ? `${cat.n} · ${cat.c}${cat.r ? " " + cat.r : ""} · buscando precio…` : `Buscando ${t}…`;
+    busqueda = { t, ok: !!cat };
+    try {
+      const r = await fetch(`/api/cotizacion?t=${encodeURIComponent(t)}`);
+      const j = await r.json();
+      if (limpiarTk() !== t) return;
+      const q = j[t];
+      if (q && q.precio) {
+        precios[t] = q; busqueda = { t, ok: true };
+        info.textContent = `${cat ? cat.n + " · " + cat.c + (cat.r ? " " + cat.r : "") : t} · precio ${$u(q.precio)}`;
+      } else if (cat) {
+        info.textContent = `${cat.n} · ${cat.c}${cat.r ? " " + cat.r : ""} · hoy no encontré su precio, se puede cargar igual.`;
+      } else {
+        busqueda = { t, ok: false };
+        info.textContent = `No encontré ${t} entre los CEDEARs ni en el Merval. Revisá cómo lo escribe el broker, o elegí "Fondo u otro".`;
+      }
+    } catch (e) {
+      if (cat) info.textContent = `${cat.n} · ${cat.c}${cat.r ? " " + cat.r : ""}`;
+    }
+  }
+  let espera;
+  $("f-activo").addEventListener("input", () => { clearTimeout(espera); espera = setTimeout(buscarTicker, 450); });
+  $("f-activo").addEventListener("change", buscarTicker);
+  $("f-clase").addEventListener("change", buscarTicker);
+
+  $("form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const activo = limpiarTk();
+    const clase = $("f-clase").value, tipo = $("f-tipo").value;
+    const cantidad = clase === "manual" ? 0 : Number($("f-cant").value), monto = Number($("f-monto").value);
+    if (!/^[A-Z0-9.\-]{1,15}$/.test(activo)) return msg("f-msg", "Escribí el ticker como aparece en el broker, por ejemplo SPY o GGAL.", true);
+    if (clase !== "manual" && !catalogo.has(activo) && !claseDe(activo) && !(busqueda.t === activo && busqueda.ok))
+      return msg("f-msg", `No encontré ${activo}. Revisá el ticker, o elegí "Fondo u otro" si no cotiza.`, true);
+    if (clase !== "manual" && !(cantidad > 0)) return msg("f-msg", "Poné cuántos CEDEARs o acciones fueron.", true);
+    if (!(monto > 0)) return msg("f-msg", "Poné el monto total de la orden en pesos.", true);
+    if (claseDe(activo) && claseDe(activo) !== clase) return msg("f-msg", `${activo} ya está cargado como ${claseDe(activo) === "manual" ? "fondo" : "CEDEAR o acción"}. Elegí ese tipo.`, true);
+    if (clase !== "manual" && tipo === "venta" && cantidad > tenencia(activo) + 1e-9) return msg("f-msg", `No alcanza: de ${activo} tiene ${ars.format(tenencia(activo))}.`, true);
+    const n = copia();
+    n.movs.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), fecha: $("f-fecha").value || hoyISO(), tipo, activo, clase, cantidad, monto });
+    $("f-guardar").disabled = true; $("f-guardar").textContent = "Guardando…";
+    const err = await guardar(n, `${tipo} de ${clase === "manual" ? "" : cantidad + " "}${activo}`);
+    $("f-guardar").disabled = false; $("f-guardar").textContent = "Guardar";
+    if (err) return msg("f-msg", err, true);
+    $("f-cant").value = ""; $("f-monto").value = "";
+    if (pideClave) $("l-clave").hidden = true;
+    msg("f-msg", `Guardado: ${tipo} de ${activo}.`);
+    dibujar(); traerPrecios();
+  });
+  $("ir-cargar").addEventListener("click", () => { $("cargar").scrollIntoView({ behavior: "smooth" }); setTimeout(() => $("f-activo").focus(), 300); });
+  $("refrescar").addEventListener("click", async () => { await cargarDatos(); dibujar(); traerPrecios(); });
+
+  // ---------- respaldo ----------
+  $("copiar-resp").addEventListener("click", async () => {
+    const texto = JSON.stringify(datos);
+    try { await navigator.clipboard.writeText(texto); msg("g-msg", "Respaldo copiado. Guardalo en una nota o mandalo por mensaje."); }
+    catch (e) { $("importar").hidden = false; $("imp-texto").value = texto; $("imp-texto").select(); msg("g-msg", "No pude copiar solo: el texto quedó seleccionado abajo, copialo a mano."); }
+  });
+  $("ver-importar").addEventListener("click", () => { $("importar").hidden = false; $("imp-texto").value = ""; $("imp-texto").focus(); });
+  $("imp-no").addEventListener("click", () => { $("importar").hidden = true; });
+  $("imp-ok").addEventListener("click", async () => {
+    let n;
+    try { n = normalizar(JSON.parse($("imp-texto").value)); } catch (e) { return msg("g-msg", "Ese texto no es un respaldo de esta cartera. Copialo de nuevo completo.", true); }
+    const err = await guardar(n, "carga un respaldo");
+    if (err) return msg("g-msg", err, true);
+    $("importar").hidden = true; msg("g-msg", `Cargados ${datos.movs.length} movimientos.`); dibujar(); traerPrecios();
+  });
+
+  (async () => {
+    await Promise.all([cargarDatos(), cargarCatalogo()]);
+    dibujar();
+    traerPrecios();
+  })();
+  setInterval(() => { if (!document.hidden) traerPrecios(); }, 60000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && (!ultima || Date.now() - ultima > 60000)) traerPrecios(); });
+})();
+</script>
+</body>
+</html>
