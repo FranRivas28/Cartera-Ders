@@ -171,6 +171,15 @@
    "clase": "mercado",
    "cantidad": 2,
    "monto": 72108.37
+  },
+  {
+   "id": "mw48zuh2ttmr",
+   "fecha": "2026-11-05",
+   "tipo": "compra",
+   "activo": "SPY",
+   "clase": "mercado",
+   "cantidad": 3,
+   "monto": 63000
   }
  ],
  "manual": {
