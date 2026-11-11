@@ -180,6 +180,15 @@
    "clase": "mercado",
    "cantidad": 3,
    "monto": 63000
+  },
+  {
+   "id": "mwc91dt2ygtn",
+   "fecha": "2026-11-11",
+   "tipo": "compra",
+   "activo": "QQQ",
+   "clase": "mercado",
+   "cantidad": 3,
+   "monto": 170000
   }
  ],
  "manual": {
