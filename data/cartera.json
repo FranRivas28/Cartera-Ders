@@ -179,7 +179,7 @@
    "activo": "SPY",
    "clase": "mercado",
    "cantidad": 3,
-   "monto": 63000
+   "monto": 63135.25
   },
   {
    "id": "mwc91dt2ygtn",
@@ -188,13 +188,67 @@
    "activo": "QQQ",
    "clase": "mercado",
    "cantidad": 3,
-   "monto": 170000
+   "monto": 173727.9
+  },
+  {
+   "id": "c120",
+   "fecha": "2026-11-11",
+   "tipo": "venta",
+   "activo": "GOOGL",
+   "clase": "mercado",
+   "cantidad": 6,
+   "monto": 49735.73
+  },
+  {
+   "id": "c121",
+   "fecha": "2026-11-11",
+   "tipo": "compra",
+   "activo": "FCI",
+   "clase": "manual",
+   "cantidad": 0,
+   "monto": 600000.0
+  },
+  {
+   "id": "c122",
+   "fecha": "2026-11-11",
+   "tipo": "venta",
+   "activo": "FCI",
+   "clase": "manual",
+   "cantidad": 0,
+   "monto": 201553.35
+  },
+  {
+   "id": "c123",
+   "fecha": "2026-11-12",
+   "tipo": "compra",
+   "activo": "DELL",
+   "clase": "mercado",
+   "cantidad": 11,
+   "monto": 89391.18
+  },
+  {
+   "id": "c124",
+   "fecha": "2026-11-12",
+   "tipo": "compra",
+   "activo": "UNH",
+   "clase": "mercado",
+   "cantidad": 5,
+   "monto": 103005.92
+  },
+  {
+   "id": "c125",
+   "fecha": "2026-11-12",
+   "tipo": "compra",
+   "activo": "CVS",
+   "clase": "mercado",
+   "cantidad": 9,
+   "monto": 90208.36
   }
  ],
  "manual": {
   "FCI": {
-   "valor": 502119,
-   "fecha": "2026-11-04"
+   "valor": 902817.17,
+   "fecha": "2026-11-12"
   }
  }
 }
