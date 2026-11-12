@@ -90,7 +90,7 @@ textarea { font: 0.8rem var(--mono); width: 100%; min-height: 6rem; color: var(-
     </div>
   </header>
 
-  <p class="aviso mal" id="aviso-local" hidden>Los movimientos no se están guardando en el repo: falta poner GITHUB_TOKEN en Vercel. Mientras tanto quedan solo en este navegador.</p>
+  <p class="aviso mal" id="aviso-local" hidden>Los movimientos no se están guardando en el repo. <span id="aviso-motivo"></span> Mientras tanto quedan solo en este navegador.</p>
 
   <section class="tiles" aria-label="Resumen">
     <div class="tile"><span class="muted">Vale hoy</span><span class="big" id="t-valor">—</span><span class="muted" id="t-valor-nota">&nbsp;</span></div>
@@ -197,7 +197,9 @@ textarea { font: 0.8rem var(--mono); width: 100%; min-height: 6rem; color: var(-
         $("aviso-local").hidden = true;
         return;
       }
-    } catch (e) { /* sin servidor */ }
+      const j = await r.json().catch(() => ({}));
+      $("aviso-motivo").textContent = j.error || `El servidor respondió ${r.status}.`;
+    } catch (e) { $("aviso-motivo").textContent = "No se pudo llegar al servidor."; }
     modo = "local";
     datos = local.leer() || vacio();
     $("aviso-local").hidden = false;
