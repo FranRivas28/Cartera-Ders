@@ -206,7 +206,7 @@
    "activo": "FCI",
    "clase": "manual",
    "cantidad": 0,
-   "monto": 600000.0
+   "monto": 600000
   },
   {
    "id": "c122",
@@ -243,6 +243,15 @@
    "clase": "mercado",
    "cantidad": 9,
    "monto": 90208.36
+  },
+  {
+   "id": "mwf3rus2frlm",
+   "fecha": "2026-11-13",
+   "tipo": "compra",
+   "activo": "SNDK",
+   "clase": "mercado",
+   "cantidad": 5,
+   "monto": 46004.59
   }
  ],
  "manual": {
